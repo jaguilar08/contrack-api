@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routes import (authentication, categories, contract_fields, contracts,
-                    responsibles)
+                    files, responsibles)
 
 app = FastAPI()
 
@@ -19,6 +19,7 @@ app.include_router(responsibles.router)
 app.include_router(categories.router)
 app.include_router(contract_fields.router)
 app.include_router(contracts.router)
+app.include_router(files.router)
 
 
 @app.get("/", tags=["root"])
