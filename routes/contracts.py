@@ -5,7 +5,7 @@ from models.contract import ContractDetails, ContractIn, ContractOverview
 from models.mongo import PyObjectId
 from pymongo.database import Database
 from utils import responses
-from utils.functions import retrieve_contracts
+from utils.functions import build_contract_data, retrieve_contracts
 
 router = APIRouter(
     prefix="/contracts", tags=["contracts"], dependencies=[Depends(auth)]
@@ -16,16 +16,19 @@ router = APIRouter(
 def create_contract(
     contract: ContractIn,
     current_group=Depends(group_parameters),
-    db: Database = Depends(get_db)
+    db: Database = Depends(get_db),
 ) -> JSONResponse:
     # verify if the category_id and responsible_id exists
     category = db.categories.find_one(
         {"_id": contract.category_id}, {"_id": 1})
+    if category is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Invalid category")
     responsible = db.responsibles.find_one(
         {"_id": contract.responsible_id}, {"_id": 1})
-    if category is None or responsible is None:
+    if responsible is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            "Invalid category or responsible")
+                            "Invalid responsible")
 
     contract_data = {
         **current_group,
@@ -42,51 +45,7 @@ def create_contract(
 
 @router.get("/", response_model=list[ContractOverview])
 def list_contracts(current_group=Depends(group_parameters), db: Database = Depends(get_db)):
-    pipeline = [
-        {
-            '$match': {
-                **current_group
-            }
-        }, {
-            '$lookup': {
-                'from': 'responsibles',
-                'localField': 'responsible_id',
-                'foreignField': '_id',
-                'as': 'responsible_obj'
-            }
-        }, {
-            '$unwind': {
-                'path': '$responsible_obj'
-            }
-        }, {
-            '$lookup': {
-                'from': 'categories',
-                'localField': 'category_id',
-                'foreignField': '_id',
-                'as': 'category_obj'
-            }
-        }, {
-            '$unwind': {
-                'path': '$category_obj'
-            }
-        }, {
-            '$project': {
-                '_id': 1,
-                'group_code': 1,
-                'dealer_code': 1,
-                'contractor_name': 1,
-                'category': '$category_obj.name',
-                'periodicity': 1,
-                'type': 1,
-                'value': 1,
-                'effective_date': 1,
-                'responsible': '$responsible_obj.name',
-                'contract_status': 1
-            }
-        }
-    ]
-    contracts = db.contracts.aggregate(pipeline)
-    return list(contracts)
+    return retrieve_contracts(db, current_group)
 
 
 @router.get("/{id}", response_model=ContractDetails)
@@ -196,3 +155,35 @@ def get_contract_details(id: PyObjectId, db: Database = Depends(get_db)):
     extra_fields = next(result)["extra_fields"]
     contract_overview = retrieve_contracts(db, {"_id": id})[0]
     return ContractDetails(**contract_overview.dict(), extra_fields=extra_fields)
+
+
+@router.put("/{id}")
+def update_contract(id: PyObjectId, contract: ContractIn, db: Database = Depends(get_db)) -> JSONResponse:
+    # verify if the category_id and responsible_id exists
+    category = db.categories.find_one(
+        {"_id": contract.category_id}, {"_id": 1})
+    if category is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Invalid category")
+    responsible = db.responsibles.find_one(
+        {"_id": contract.responsible_id}, {"_id": 1})
+    if responsible is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Invalid responsible")
+
+    updated_contract_data = build_contract_data(contract)
+    updated_contract = db.contracts.find_one_and_update({"_id": id}, {
+        "$set": updated_contract_data
+    })
+    if not updated_contract:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+    return responses.success_ok()
+
+
+@router.delete("/{id}")
+def delete_contract(id: PyObjectId, db: Database = Depends(get_db)) -> JSONResponse:
+    """Delete a contract using its id"""
+    result = db.contracts.delete_one({"_id": id})
+    if result.deleted_count == 0:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+    return responses.success_ok()

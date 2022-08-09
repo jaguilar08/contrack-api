@@ -3,14 +3,12 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from models.contract_field import ContractFieldValueOut, FieldValueIn
+from models.contract_field import ContractFieldValueIn, ContractFieldValueOut
 from models.mongo import MongoModel, PyObjectId
 
 ContractStatus = Literal["active", "inactive"]
-
 ContractPeriodicity = Literal["monthly",
                               "bimonthly", "quarterly", "biannually", "annually"]
-
 ContractType = Literal["liability", "revenue"]
 
 
@@ -26,15 +24,15 @@ class ContractBase(BaseModel):
 class ContractIn(ContractBase):
     category_id: PyObjectId
     responsible_id: PyObjectId
-    extra_fields: list[FieldValueIn] | None
+    extra_fields: list[ContractFieldValueIn] | None
 
 
-class ContractOverview(MongoModel, ContractBase):
+class ContractOverview(ContractBase, MongoModel):
     category: str
     responsible: str
 
 
-class ContractDetails(MongoModel, ContractBase):
+class ContractDetails(ContractBase, MongoModel):
     category: str
     responsible: str
     extra_fields: list[ContractFieldValueOut] | None

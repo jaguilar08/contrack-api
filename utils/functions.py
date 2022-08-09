@@ -1,5 +1,4 @@
-from models.contract import ContractOverview
-from models.mongo import PyObjectId
+from models.contract import ContractIn, ContractOverview
 from pymongo.database import Database
 
 
@@ -47,3 +46,20 @@ def retrieve_contracts(db: Database, query: dict) -> list[ContractOverview]:
     ]
     result = db.contracts.aggregate(pipeline)
     return [ContractOverview(**contract) for contract in list(result)]
+
+
+def build_contract_data(contract_in: ContractIn, current_group: dict = {}) -> dict:
+    """
+    Takes a ContractIn model and flattens the data into a dict so it can be
+    inserted into the database.
+    """
+    contract_data = {
+        **current_group,
+        **contract_in.dict(exclude={"extra_fields"})
+    }
+    # flatten the extra_fields array into a dictionary
+    if contract_in.extra_fields:
+        extra_fields = {
+            field.field_code: field.details.field_value for field in contract_in.extra_fields}
+        contract_data.update(extra_fields)
+    return contract_data

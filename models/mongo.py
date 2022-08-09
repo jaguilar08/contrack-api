@@ -19,6 +19,7 @@ class PyObjectId(ObjectId):
 
 
 class MongoModel(BaseModel):
+    """Represents a MongoDB document"""
     id: PyObjectId = Field(alias="_id")
 
     class Config:
