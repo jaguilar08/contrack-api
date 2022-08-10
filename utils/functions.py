@@ -1,3 +1,4 @@
+from dateutil.relativedelta import relativedelta
 from models.contract import ContractIn, ContractOverview
 from pymongo.database import Database
 
@@ -57,6 +58,18 @@ def build_contract_data(contract_in: ContractIn, current_group: dict = {}) -> di
         **current_group,
         **contract_in.dict(exclude={"extra_fields"})
     }
+    periodicity_table = {
+        "monthly": 1,
+        "bimonthly": 2,
+        "quarterly": 3,
+        "biannually": 6,
+        "annually": 12
+    }
+    due_date = contract_in.effective_date + \
+        relativedelta(months=periodicity_table[contract_in.periodicity])
+    contract_data.update({
+        "due_date": due_date
+    })
     # flatten the extra_fields array into a dictionary
     if contract_in.extra_fields:
         extra_fields = {

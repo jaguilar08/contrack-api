@@ -30,15 +30,7 @@ def create_contract(
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Invalid responsible")
 
-    contract_data = {
-        **current_group,
-        **contract.dict(exclude={"extra_fields"})
-    }
-    # flatten the extra_fields array into a dictionary
-    if contract.extra_fields:
-        extra_fields = {
-            field.field_code: field.details.field_value for field in contract.extra_fields}
-        contract_data.update(extra_fields)
+    contract_data = build_contract_data(contract, current_group)
     db.contracts.insert_one(contract_data)
     return responses.success_ok()
 
