@@ -19,6 +19,8 @@ class ContractBase(BaseModel):
     value: float
     effective_date: datetime
     contract_status: ContractStatus
+    category_id: PyObjectId
+    responsible_id: PyObjectId
 
 
 class ContractIn(ContractBase):

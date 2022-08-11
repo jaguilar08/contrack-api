@@ -12,12 +12,12 @@ router = APIRouter(
 )
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=ContractOverview)
 def create_contract(
     contract: ContractIn,
     current_group=Depends(group_parameters),
     db: Database = Depends(get_db),
-) -> JSONResponse:
+):
     # verify if the category_id and responsible_id exists
     category = db.categories.find_one(
         {"_id": contract.category_id}, {"_id": 1})
@@ -31,8 +31,9 @@ def create_contract(
                             "Invalid responsible")
 
     contract_data = build_contract_data(contract, current_group)
-    db.contracts.insert_one(contract_data)
-    return responses.success_ok()
+    new_contract = db.contracts.insert_one(contract_data)
+    new_contract = retrieve_contracts(db, {"_id": new_contract.inserted_id})
+    return new_contract[0]
 
 
 @router.get("/", response_model=list[ContractOverview])
@@ -149,8 +150,8 @@ def get_contract_details(id: PyObjectId, db: Database = Depends(get_db)):
     return ContractDetails(**contract_overview.dict(), extra_fields=extra_fields)
 
 
-@router.put("/{id}")
-def update_contract(id: PyObjectId, contract: ContractIn, db: Database = Depends(get_db)) -> JSONResponse:
+@router.put("/{id}", response_model=ContractOverview)
+def update_contract(id: PyObjectId, contract: ContractIn, db: Database = Depends(get_db)):
     # verify if the category_id and responsible_id exists
     category = db.categories.find_one(
         {"_id": contract.category_id}, {"_id": 1})
@@ -169,7 +170,8 @@ def update_contract(id: PyObjectId, contract: ContractIn, db: Database = Depends
     })
     if not updated_contract:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
-    return responses.success_ok()
+
+    return retrieve_contracts(db, {"_id": id})[0]
 
 
 @router.delete("/{id}")

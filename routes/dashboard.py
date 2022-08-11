@@ -2,6 +2,7 @@ import math
 from datetime import datetime
 from turtle import update
 
+from dateutil.relativedelta import relativedelta
 from deps import auth, get_db, group_parameters
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from models.contract import ContractType
@@ -21,6 +22,7 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filter")
+    date_filter = date_filter + relativedelta(months=1)
     pipeline = [
         {
             '$match': {
@@ -28,11 +30,11 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
                     current_group,
                     {
                         'effective_date': {
-                            '$lte': date_filter
+                            '$lt': date_filter
                         }
                     }, {
                         'due_date': {
-                            '$gte': date_filter
+                            '$gt': date_filter
                         }
                     }, {
                         'contract_status': {

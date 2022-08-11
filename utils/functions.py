@@ -35,12 +35,14 @@ def retrieve_contracts(db: Database, query: dict) -> list[ContractOverview]:
                 'group_code': 1,
                 'dealer_code': 1,
                 'contractor_name': 1,
+                'category_id': 1,
                 'category': '$category_obj.name',
                 'periodicity': 1,
                 'due_date': 1,
                 'type': 1,
                 'value': 1,
                 'effective_date': 1,
+                'responsible_id': 1,
                 'responsible': '$responsible_obj.name',
                 'contract_status': 1
             }
