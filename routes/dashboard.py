@@ -1,16 +1,18 @@
+import math
 from datetime import datetime
+from turtle import update
 
 from deps import auth, get_db, group_parameters
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from models.contract import ContractType
-from models.dashboard import DashboardOut
+from models.dashboard import AnnualDashboardOut, MonthlyDashboardOut
 from pymongo.database import Database
 
 router = APIRouter(prefix="/dashboard",
                    tags=["dashboard"], dependencies=[Depends(auth)])
 
 
-@router.get("/monthly", response_model=DashboardOut)
+@router.get("/monthly", response_model=MonthlyDashboardOut)
 def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
                      type: ContractType = Query(), current_group=Depends(group_parameters),
                      db: Database = Depends(get_db)):
@@ -101,7 +103,7 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
     result = db.contracts.aggregate(pipeline)
     dashboard = next(result, {})
     if not dashboard:
-        return DashboardOut()
+        return MonthlyDashboardOut()
     by_category = {}
     by_responsible = {}
     by_periodicity = {}
@@ -110,7 +112,7 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
             if not group.get(key, False):
                 group[key] = {
                     "quantity": 0,
-                    "total_value": 0
+                    "total_value": 0.0
                 }
             group[key]["quantity"] += 1
             group[key]["total_value"] += contract["value"]
@@ -164,4 +166,87 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
         "by_periodicity": by_periodicity,
         "inactive_quantity": inactive_data["quantity"],
         "inactive_total_value": inactive_data['total_value']
+    }
+
+
+@router.get("/annual", response_model=AnnualDashboardOut)
+def get_annual_data(year: int, type: ContractType,
+                    current_group=Depends(group_parameters),
+                    db: Database = Depends(get_db)):
+    try:
+        date_filter_start = datetime(year, 1, 1)
+        date_filter_end = datetime(year, 12, 31, 23, 59, 59)
+    except ValueError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid year")
+    pipeline = [
+        {
+            '$match': {
+                '$and': [
+                    current_group,
+                    {
+                        'contract_status': 'active'
+                    }, {
+                        'effective_date': {
+                            '$lte': date_filter_end
+                        }
+                    }, {
+                        'effective_date': {
+                            '$gte': date_filter_start
+                        }
+                    }, {
+                        'type': type
+                    }
+                ]
+            }
+        }, {
+            '$project': {
+                '_id': 0,
+                'effective_date': 1,
+                'value': 1,
+                'periodicity': 1,
+                'due_date': 1
+            }
+        }
+    ]
+    result = db.contracts.aggregate(pipeline)
+    if not next(result, {}):
+        AnnualDashboardOut()
+    """
+    result structure:
+        periodicity: str
+        value: float
+        effective_date: datetime
+        due_date: datetime
+    """
+    contracts = iter(result)
+    by_month = {str(i): {"quantity": 0, "total_value": 0.0}
+                for i in range(1, 13)}
+    periodicity = ("monthly", "bimonthly", "quarterly",
+                   "biannually", "annually")
+    by_periodicity = {p: {"quantity": 0, "total_value": 0.0}
+                      for p in periodicity}
+    ranges = ((0, 1000), (1001, 5000), (5001, 10000), (10001, "inf"))
+    by_value_range = {
+        f"{a} - {b}": 0 for a, b in ranges
+    }
+    for contract in contracts:
+        def update_group(group: dict, key: str):
+            group[key]["quantity"] += 1
+            group[key]["total_value"] += contract["value"]
+        update_group(by_month, str(contract["effective_date"].month))
+        update_group(by_periodicity, contract["periodicity"])
+        # update by_value_range
+        int_value = math.ceil(contract["value"])
+        for l, h in ranges:
+            if h == "inf":
+                by_value_range[f"{l} - {h}"] += 1
+                break
+            else:
+                if int_value in range(l, h+1):
+                    by_value_range[f"{l} - {h}"] += 1
+                    break
+    return {
+        "by_month": by_month,
+        "by_periodicity": by_periodicity,
+        "by_value_range_qty": by_value_range
     }

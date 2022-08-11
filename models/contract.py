@@ -30,6 +30,7 @@ class ContractIn(ContractBase):
 class ContractOverview(ContractBase, MongoModel):
     category: str
     responsible: str
+    due_date: datetime
 
 
 class ContractDetails(ContractBase, MongoModel):
