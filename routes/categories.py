@@ -56,9 +56,13 @@ def update_category(
     category: CategoryIn,
     db: Database = Depends(get_db)
 ):
-    updated_category = db.categories.find_one_and_update(
-        {"_id": id}, {"$set": category.dict()}, return_document=ReturnDocument.AFTER
-    )
+    try:
+        updated_category = db.categories.find_one_and_update(
+            {"_id": id}, {"$set": category.dict()}, return_document=ReturnDocument.AFTER
+        )
+    except DuplicateKeyError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="Duplicate name for current group")
     if updated_category is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             detail="Category not found")

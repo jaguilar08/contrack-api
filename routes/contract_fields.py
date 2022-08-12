@@ -3,8 +3,8 @@ import re
 from database import MongoCon
 from deps import auth, get_db, group_parameters
 from fastapi import APIRouter, Depends, HTTPException, status
-from models.contract_field import (ContractFieldIn, ContractFieldOut,
-                                   ContractFieldUpdate)
+from models.contract_field import (BlockedFields, ContractFieldIn,
+                                   ContractFieldOut, ContractFieldUpdate)
 from pymongo import ReturnDocument
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
@@ -39,6 +39,9 @@ def create_contract_field(
         **contract_field.dict(),
         "field_code": snake_case(contract_field.field_label)
     }
+    if contract_field_data["field_code"] in BlockedFields:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="Blocked field_code")
     try:
         new_contract_field = db.contract_fields.insert_one(contract_field_data)
     except DuplicateKeyError:
@@ -63,7 +66,7 @@ def list_contract_fields(
     return list(contract_fields)
 
 
-@router.post("/{field_code}/status", response_model=dict)
+@router.post("/{field_code}", response_model=dict)
 def update_field_status(
     field_code: str,
     field_update: ContractFieldUpdate,
