@@ -30,12 +30,20 @@ class ContractIn(ContractBase):
 
 
 class ContractOverview(ContractBase, MongoModel):
+    due_date: datetime
     category: str
     responsible: str
-    due_date: datetime
 
 
 class ContractDetails(ContractBase, MongoModel):
+    due_date: datetime
     category: str
     responsible: str
     extra_fields: list[ContractFieldValueOut] | None
+
+
+class AlertsContractOverview(ContractBase, MongoModel):
+    due_date: datetime
+    category: str
+    responsible: str
+    days_until_due_date: int

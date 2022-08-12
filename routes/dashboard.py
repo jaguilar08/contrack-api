@@ -1,12 +1,15 @@
+import heapq
 import math
 from datetime import datetime
+from operator import itemgetter
 from turtle import update
 
 from dateutil.relativedelta import relativedelta
 from deps import auth, get_db, group_parameters
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from models.contract import ContractType
-from models.dashboard import AnnualDashboardOut, MonthlyDashboardOut
+from models.dashboard import (AnnualDashboardOut, MonthlyDashboardOut,
+                              OldestDateOut)
 from pymongo.database import Database
 
 router = APIRouter(prefix="/dashboard",
@@ -22,7 +25,7 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filter")
-    date_filter = date_filter + relativedelta(months=1)
+    date_filter_next = date_filter + relativedelta(months=1)
     pipeline = [
         {
             '$match': {
@@ -30,11 +33,11 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
                     current_group,
                     {
                         'effective_date': {
-                            '$lt': date_filter
+                            '$lt': date_filter_next
                         }
                     }, {
                         'due_date': {
-                            '$gt': date_filter
+                            '$gte': date_filter
                         }
                     }, {
                         'contract_status': {
@@ -122,9 +125,18 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
         update_group(by_responsible, contract["responsible"])
         update_group(by_periodicity, contract["periodicity"])
 
+    by_category = [{"key": k, **v} for k, v in
+                   heapq.nlargest(10, by_category.items(),
+                                  key=lambda kv: kv[1]["total_value"])]
+    by_responsible = [{"key": k, **v} for k, v in
+                      heapq.nlargest(10, by_responsible.items(),
+                                     key=lambda kv: kv[1]["total_value"])]
+    by_periodicity = [{"key": k, **v} for k, v in by_periodicity.items()]
+
     for group in (by_category, by_responsible, by_periodicity):
-        for data in group.values():
-            data["average_value"] = data["total_value"] / data["quantity"]
+        for item in group:
+            item["average_value"] = round(
+                item["total_value"] / item["quantity"], 2)
 
     # get inactive contracts
     pipeline = [
@@ -162,12 +174,25 @@ def get_monthly_data(month: int = Query(ge=1, le=12), year: int = Query(),
     return {
         "quantity": dashboard["quantity"],
         "total_value": dashboard["total_value"],
-        "average_value": dashboard["average_value"],
+        "average_value": round(dashboard["average_value"], 2),
         "by_category": by_category,
         "by_responsible": by_responsible,
         "by_periodicity": by_periodicity,
         "inactive_quantity": inactive_data["quantity"],
         "inactive_total_value": inactive_data['total_value']
+    }
+
+
+@ router.get("/monthly/get_oldest", response_model=OldestDateOut)
+def get_oldest_date(current_group: dict[str, str] = Depends(group_parameters), db: Database = Depends(get_db)):
+    contract = db.contracts.find(
+        {**current_group, "contract_status": {"$nin": ["inactive"]}}, {"_id": 0, "effective_date": 1, "due_date": 1}).sort("effective_date").limit(1)
+    contract = next(contract, {})
+    if not contract:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No contracts found")
+    return {
+        "year": contract["effective_date"].year,
+        "month": contract["effective_date"].month
     }
 
 
