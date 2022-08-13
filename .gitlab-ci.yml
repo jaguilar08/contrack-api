@@ -1,0 +1,100 @@
+stages:
+  - init
+  - tests
+  - request
+  - merge
+
+# before_script:
+#     - python3 -m venv gitlab-venv
+#     - source gitlab-venv/bin/activate
+#     - pip install --upgrade pip
+#     - pip install -r requirements.txt
+  
+init:
+  stage: init
+  script:
+    - whoami
+    - free -th
+    - hostnamectl
+
+# version:
+#   stage: init
+#   script:
+#     - python --version
+#     - pip -V
+#     - pip freeze
+
+# unittest:
+#   stage: tests
+#   script:
+#     - coverage run --source=modules test_index.py
+#     - echo "Report TEST > " + $COVERAGE_FAIL_UNDER
+#     - coverage report --fail-under=$COVERAGE_FAIL_UNDER
+#     - deactivate
+
+ssh_develop:
+  stage: tests
+  script:
+    - python gitlab_integration.py $SSH_HOST_DEV $SSH_USER $SSH_PASSWORD develop test
+    - deactivate
+  only:
+    - develop
+
+
+ssh_demo:
+  stage: tests
+  script:
+    - python gitlab_integration.py $SSH_HOST_DEMO $SSH_USER $SSH_PASSWORD demo test
+    - deactivate
+  only:
+    - demo
+    
+ssh_prod:
+  stage: tests
+  script:
+    - python gitlab_integration.py $SSH_HOST_PROD $SSH_USER $SSH_PASSWORD master test
+    - deactivate
+  only:
+    - master
+
+develop:
+  stage: request
+  script:
+    - python gitlab_integration.py $SSH_HOST_DEV $SSH_USER $SSH_PASSWORD develop
+    - deactivate
+  only:
+    - develop
+
+demo:
+  stage: request
+  script:
+    - python gitlab_integration.py $SSH_HOST_DEMO $SSH_USER $SSH_PASSWORD demo
+    - deactivate
+  only:
+    - demo
+
+
+master:
+  stage: request
+  script:
+    - python gitlab_integration.py $SSH_HOST_PROD $SSH_USER $SSH_PASSWORD master
+    - deactivate
+  only:
+    - master
+    
+    
+merge_request_demo:
+  stage: merge
+  script:
+    - echo "branch current develop -> request merge to DEMO"
+    - deactivate
+  only:
+    - develop  
+    
+merge_request_master:
+  stage: merge
+  script:
+    - echo "branch current demo -> request merge to MASTER"
+    - deactivate
+  only:
+    - demo
