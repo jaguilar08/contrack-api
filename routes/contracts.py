@@ -41,7 +41,6 @@ def list_contracts(current_group=Depends(group_parameters), db: Database = Depen
 
 @router.get("/search/{query}", response_model=list[ContractOverview])
 def search_contract(query: str, db: Database = Depends(get_db), current_group=Depends(group_parameters)):
-    print(current_group)
     return retrieve_contracts(db, {
         '$and': [
             { 'group_code': current_group},
