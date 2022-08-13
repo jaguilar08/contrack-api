@@ -35,7 +35,7 @@ init:
 ssh_develop:
   stage: tests
   script:
-    - python gitlab_integration.py $SSH_HOST_DEV $SSH_USER $SSH_PASSWORD develop test
+    - python3 gitlab_integration.py $SSH_HOST_DEV $SSH_USER $SSH_PASSWORD develop test
     - deactivate
   only:
     - develop
@@ -44,7 +44,7 @@ ssh_develop:
 ssh_demo:
   stage: tests
   script:
-    - python gitlab_integration.py $SSH_HOST_DEMO $SSH_USER $SSH_PASSWORD demo test
+    - python3 gitlab_integration.py $SSH_HOST_DEMO $SSH_USER $SSH_PASSWORD demo test
     - deactivate
   only:
     - demo
@@ -52,7 +52,7 @@ ssh_demo:
 ssh_prod:
   stage: tests
   script:
-    - python gitlab_integration.py $SSH_HOST_PROD $SSH_USER $SSH_PASSWORD master test
+    - python3 gitlab_integration.py $SSH_HOST_PROD $SSH_USER $SSH_PASSWORD master test
     - deactivate
   only:
     - master
@@ -60,7 +60,7 @@ ssh_prod:
 develop:
   stage: request
   script:
-    - python gitlab_integration.py $SSH_HOST_DEV $SSH_USER $SSH_PASSWORD develop
+    - python3 gitlab_integration.py $SSH_HOST_DEV $SSH_USER $SSH_PASSWORD develop
     - deactivate
   only:
     - develop
@@ -68,7 +68,7 @@ develop:
 demo:
   stage: request
   script:
-    - python gitlab_integration.py $SSH_HOST_DEMO $SSH_USER $SSH_PASSWORD demo
+    - python3 gitlab_integration.py $SSH_HOST_DEMO $SSH_USER $SSH_PASSWORD demo
     - deactivate
   only:
     - demo
@@ -77,7 +77,7 @@ demo:
 master:
   stage: request
   script:
-    - python gitlab_integration.py $SSH_HOST_PROD $SSH_USER $SSH_PASSWORD master
+    - python3 gitlab_integration.py $SSH_HOST_PROD $SSH_USER $SSH_PASSWORD master
     - deactivate
   only:
     - master
