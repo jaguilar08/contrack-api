@@ -39,7 +39,7 @@ def create_contract(
 def list_contracts(current_group=Depends(group_parameters), db: Database = Depends(get_db)):
     return retrieve_contracts(db, current_group)
 
-@router.get("/{query}", response_model=list[ContractOverview])
+@router.get("/search/{query}", response_model=list[ContractOverview])
 def search_contract(query: str, db: Database = Depends(get_db), current_group=Depends(group_parameters)):
     print(current_group)
     return retrieve_contracts(db, {
