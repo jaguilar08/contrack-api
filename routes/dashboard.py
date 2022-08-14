@@ -273,7 +273,7 @@ def get_annual_data(year: int, type: ContractType,
                     by_value_range[f"{l} - {h}"] += 1
                     break
     return {
-        "by_month": by_month,
-        "by_periodicity": by_periodicity,
-        "by_value_range_qty": by_value_range
+        "by_month": [{"key": k, **v} for k, v in by_month.items()],
+        "by_periodicity": [{"key": k, **v} for k, v in by_periodicity.items()],
+        "by_value_range_qty": [{"key": k, "quantity": v} for k, v in by_value_range.items()]
     }
