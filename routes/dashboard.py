@@ -201,7 +201,7 @@ def get_annual_data(year: int, type: ContractType,
                     current_group=Depends(group_parameters),
                     db: Database = Depends(get_db)):
     try:
-        date_filter_start = datetime(year, 1, 1)
+        date_filter_start = datetime(year, 1, 1, 0, 0, 0)
         date_filter_end = datetime(year, 12, 31, 23, 59, 59)
     except ValueError:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid year")
@@ -236,8 +236,6 @@ def get_annual_data(year: int, type: ContractType,
         }
     ]
     result = db.contracts.aggregate(pipeline)
-    if not next(result, {}):
-        AnnualDashboardOut()
     """
     result structure:
         periodicity: str
