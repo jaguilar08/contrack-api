@@ -7,7 +7,7 @@ from models.contract_field import (BlockedFields, ContractFieldIn,
                                    ContractFieldOut, ContractFieldUpdate)
 from pymongo import ReturnDocument
 from pymongo.database import Database
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import BulkWriteError, DuplicateKeyError
 from utils import responses
 
 router = APIRouter(prefix="/contract_fields",
@@ -101,7 +101,7 @@ def init_group_fields(
     try:
         _ = db.contract_fields.insert_many(
             list(global_fields))
-    except DuplicateKeyError:
+    except BulkWriteError:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "This group has already been initialized")
     return responses.success_ok()
