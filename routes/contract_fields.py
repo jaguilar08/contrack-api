@@ -97,7 +97,7 @@ def init_group_fields(
 ):
     """Initializes the contract fields of a new group at the moment of installation"""
     global_fields = db.global_fields.find(
-        {}, {**current_group, "field_label": 1, "field_code": 1, "field_type": 1, "field_status": "additional"})
+        {}, {"_id": 0, **current_group, "field_label": 1, "field_code": 1, "field_type": 1, "field_status": "additional"})
     try:
         _ = db.contract_fields.insert_many(
             list(global_fields))
