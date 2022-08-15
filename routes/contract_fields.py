@@ -17,10 +17,13 @@ router = APIRouter(prefix="/contract_fields",
 @router.on_event("startup")
 def router_setup() -> None:
     """Setup the unique index for the Mongo database"""
-    with MongoCon() as db:  # can not use dependencies on event handlers
-        db.contract_fields.create_index(
-            [("group_code", 1), ("dealer_code", 1), ("field_code", 1)], unique=True
-        )
+    try:
+        with MongoCon() as db:  # can not use dependencies on event handlers
+            db.contract_fields.create_index(
+                [("group_code", 1), ("dealer_code", 1), ("field_code", 1)], unique=True
+            )
+    except:
+        pass
 
 
 @router.post(
