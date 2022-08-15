@@ -4,8 +4,7 @@ from database import MongoCon
 from deps import auth, get_db, group_parameters
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.contract_field import (BlockedFields, ContractFieldIn,
-                                   ContractFieldOut, ContractFieldUpdate,
-                                   GlobalFieldOut)
+                                   ContractFieldOut, ContractFieldUpdate)
 from pymongo import ReturnDocument
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
@@ -67,11 +66,11 @@ def list_contract_fields(
     return list(contract_fields)
 
 
-@router.get("/global_fields", response_model=list[GlobalFieldOut])
-def list_global_contract_fields(db: Database = Depends(get_db)):
-    """Get all of the contract fields that do not require a current group"""
-    global_fields = db.global_fields.find({})
-    return list(global_fields)
+# @router.get("/global_fields", response_model=list[GlobalFieldOut])
+# def list_global_contract_fields(db: Database = Depends(get_db)):
+#     """Get all of the contract fields that do not require a current group"""
+#     global_fields = db.global_fields.find({})
+#     return list(global_fields)
 
 
 @router.post("/{field_code}", response_model=dict)
@@ -88,6 +87,23 @@ def update_field_status(
     )
     if contract_field is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Field does not exist")
+    return responses.success_ok()
+
+
+@router.get("/init_group_fields", response_model=dict)
+def init_group_fields(
+    current_group: dict = Depends(group_parameters),
+    db: Database = Depends(get_db)
+):
+    """Initializes the contract fields of a new group at the moment of installation"""
+    global_fields = db.global_fields.find(
+        {}, {**current_group, "field_label": 1, "field_code": 1, "field_type": 1, "field_status": "additional"})
+    try:
+        _ = db.contract_fields.insert_many(
+            list(global_fields))
+    except DuplicateKeyError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "This group has already been initialized")
     return responses.success_ok()
 
 
