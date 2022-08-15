@@ -46,7 +46,7 @@ def search_contract(query: str, db: Database = Depends(get_db), current_group=De
     return retrieve_contracts(db, {
         '$and': [
             {**current_group},
-            {'contractor_name': {'$regex': query}}
+            {'contractor_name': {'$regex': query, "$options": "i"}}
         ]
     })
 
