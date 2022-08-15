@@ -3,11 +3,11 @@ import re
 from database import MongoCon
 from deps import auth, get_db, group_parameters
 from fastapi import APIRouter, Depends, HTTPException, status
-from models.contract_field import (ContractFieldIn, ContractFieldOut,
-                                   ContractFieldUpdate)
+from models.contract_field import (BlockedFields, ContractFieldIn,
+                                   ContractFieldOut, ContractFieldUpdate)
 from pymongo import ReturnDocument
 from pymongo.database import Database
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import BulkWriteError, DuplicateKeyError
 from utils import responses
 
 router = APIRouter(prefix="/contract_fields",
@@ -39,6 +39,9 @@ def create_contract_field(
         **contract_field.dict(),
         "field_code": snake_case(contract_field.field_label)
     }
+    if contract_field_data["field_code"] in BlockedFields:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="Blocked field_code")
     try:
         new_contract_field = db.contract_fields.insert_one(contract_field_data)
     except DuplicateKeyError:
@@ -63,7 +66,14 @@ def list_contract_fields(
     return list(contract_fields)
 
 
-@router.post("/{field_code}/status", response_model=dict)
+# @router.get("/global_fields", response_model=list[GlobalFieldOut])
+# def list_global_contract_fields(db: Database = Depends(get_db)):
+#     """Get all of the contract fields that do not require a current group"""
+#     global_fields = db.global_fields.find({})
+#     return list(global_fields)
+
+
+@router.post("/{field_code}", response_model=dict)
 def update_field_status(
     field_code: str,
     field_update: ContractFieldUpdate,
@@ -77,6 +87,23 @@ def update_field_status(
     )
     if contract_field is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Field does not exist")
+    return responses.success_ok()
+
+
+@router.get("/init_group_fields", response_model=dict)
+def init_group_fields(
+    current_group: dict = Depends(group_parameters),
+    db: Database = Depends(get_db)
+):
+    """Initializes the contract fields of a new group at the moment of installation"""
+    global_fields = db.global_fields.find(
+        {}, {"_id": 0, **current_group, "field_label": 1, "field_code": 1, "field_type": 1, "field_status": "additional"})
+    try:
+        _ = db.contract_fields.insert_many(
+            list(global_fields))
+    except BulkWriteError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "This group has already been initialized")
     return responses.success_ok()
 
 

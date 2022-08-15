@@ -1,24 +1,35 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel
 
 from models.mongo import MongoModel
 
+BlockedFields = {"contractor_name", "periodicity", "type", "value", "effective_date",
+                 "contract_status", "category_id", "responsible_id", "category", "responsible", "extra_fields", "path", "due_date"}
 FieldStatus = Literal["required", "additional"]
 FieldType = Literal["text", "email", "phone",
                     "currency", "number", "toggle", "date"]
 
 
 class ContractFieldIn(BaseModel):
+    """Input data for a new Contract Field"""
     field_label: str
     field_status: FieldStatus
     field_type: FieldType
 
 
 class ContractFieldOut(MongoModel):
+    """Represents the Contract Field in the Mongo database"""
     field_label: str
     field_code: str
     field_status: FieldStatus
+    field_type: FieldType
+
+
+class GlobalFieldOut(MongoModel):
+    field_label: str
+    field_code: str
     field_type: FieldType
 
 
@@ -41,9 +52,15 @@ class BooleanValue(BaseModel):
     field_value: bool
 
 
-class FieldValueIn(BaseModel):
+class DateValue(BaseModel):
+    field_type: Literal["date"]
+    field_value: datetime
+
+
+class ContractFieldValueIn(BaseModel):
+    """Represents the data that a field can save"""
     field_code: str
-    details: TextValue | IntegerValue | BooleanValue
+    details: TextValue | IntegerValue | BooleanValue | DateValue
 
 
 class ContractFieldValueOut(BaseModel):
@@ -51,4 +68,4 @@ class ContractFieldValueOut(BaseModel):
     field_status: FieldStatus
     field_type: FieldType
     field_code: str
-    field_value: str | bool | int
+    field_value: str | bool | int | datetime

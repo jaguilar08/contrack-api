@@ -61,9 +61,13 @@ def list_responsibles(
 def update_responsible(
     id: PyObjectId, responsible: ResponsibleIn, db: Database = Depends(get_db)
 ):
-    updated_responsible = db.responsibles.find_one_and_update(
-        {"_id": id}, {"$set": responsible.dict()}, return_document=ReturnDocument.AFTER
-    )
+    try:
+        updated_responsible = db.responsibles.find_one_and_update(
+            {"_id": id}, {"$set": responsible.dict()}, return_document=ReturnDocument.AFTER
+        )
+    except DuplicateKeyError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="Duplicate name for current group")
     if updated_responsible is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             detail="Responsible not found")
