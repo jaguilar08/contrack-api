@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from models.mongo import MongoModel
 
 BlockedFields = {"contractor_name", "periodicity", "type", "value", "effective_date",
-                 "contract_status", "category_id", "responsible_id", "category", "responsible", "extra_fields", "path"}
+                 "contract_status", "category_id", "responsible_id", "category", "responsible", "extra_fields", "path", "due_date"}
 FieldStatus = Literal["required", "additional"]
 FieldType = Literal["text", "email", "phone",
                     "currency", "number", "toggle", "date"]
@@ -24,6 +24,12 @@ class ContractFieldOut(MongoModel):
     field_label: str
     field_code: str
     field_status: FieldStatus
+    field_type: FieldType
+
+
+class GlobalFieldOut(MongoModel):
+    field_label: str
+    field_code: str
     field_type: FieldType
 
 

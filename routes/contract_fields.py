@@ -4,7 +4,8 @@ from database import MongoCon
 from deps import auth, get_db, group_parameters
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.contract_field import (BlockedFields, ContractFieldIn,
-                                   ContractFieldOut, ContractFieldUpdate)
+                                   ContractFieldOut, ContractFieldUpdate,
+                                   GlobalFieldOut)
 from pymongo import ReturnDocument
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
@@ -64,6 +65,13 @@ def list_contract_fields(
     """Get all the contract fields for a given group"""
     contract_fields = db.contract_fields.find(current_group)
     return list(contract_fields)
+
+
+@router.get("/global_fields", response_model=list[GlobalFieldOut])
+def list_global_contract_fields(db: Database = Depends(get_db)):
+    """Get all of the contract fields that do not require a current group"""
+    global_fields = db.global_fields.find({})
+    return list(global_fields)
 
 
 @router.post("/{field_code}", response_model=dict)
